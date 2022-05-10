@@ -9,8 +9,8 @@ using namespace std;
 namespace transport_catalogue {
 	namespace input_handler {
 
-		Reader::Reader(TransportCatalogue& cat)
-			: cat_(cat)
+		Reader::Reader(TransportCatalogue& catalogue)
+			: catalogue_(catalogue)
 		{}
 
 		void Reader::Read(istream& input) {
@@ -25,20 +25,21 @@ namespace transport_catalogue {
 					buses << line << endl;
 					continue;
 				}
-				cat_.AddStop(ParseStop(line));
+				Stop stop_to_add = ParseStop(line);
+				catalogue_.AddStop(stop_to_add.name, stop_to_add.coords);
 				stops << line << endl;
 			}
 
 			while (getline(stops, line)) {
 				current_stop_name = line.substr(5, line.find(':') - 5);
 				for (const auto& [stop_name, distance] : ParseDistances(line)) {
-					cat_.AddDistance(current_stop_name, stop_name, distance);
+					catalogue_.SetDistance(current_stop_name, stop_name, distance);
 				}
 			}
 
 			while (getline(buses, line)) {
 				auto parsed_bus = ParseBus(line);
-				cat_.AddBus(parsed_bus.name, parsed_bus.route.stop_names, parsed_bus.route.circled);
+				catalogue_.AddBus(parsed_bus.name, parsed_bus.route.stop_names, parsed_bus.route.circled);
 			}
 
 		}

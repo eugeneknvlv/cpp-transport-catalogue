@@ -31,7 +31,7 @@ namespace transport_catalogue {
 			parsed::Route ParseRoute(std::string& raw_route_string);
 			std::unordered_map<std::string, int> ParseDistances(std::string& raw_stop_string) const;
 		private:
-			TransportCatalogue& cat_;
+			TransportCatalogue& catalogue_;
 		};
 	}
 }

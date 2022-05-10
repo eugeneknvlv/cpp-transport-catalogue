@@ -17,6 +17,21 @@ namespace transport_catalogue {
 		detail::Coordinates coords;
 	};
 
+	struct Bus {
+		std::string name;
+		std::vector<const Stop*> stops;
+		bool is_circled;
+	};
+
+	struct BusData {
+		std::string name;
+		size_t stops_count;
+		size_t unique_stops_count;
+		size_t real_route_length;
+		double geo_route_length;
+		double curvature;
+	};
+
 	namespace detail {
 		struct StopPtrPairHahser {
 			size_t operator() (const std::pair<const Stop*, const Stop*>& stop_ptr_pair) const {
@@ -28,21 +43,16 @@ namespace transport_catalogue {
 		};
 	}
 
-	struct Bus {
-		std::string name;
-		std::vector<const Stop*> stops;
-		bool circled;
-	};
-
 	class TransportCatalogue {
 	public:
-		void AddStop(Stop stop);
+		void AddStop(std::string name, detail::Coordinates coords);
 		void AddBus(std::string name, std::vector<std::string>& stops, bool circled);
-		void AddDistance(std::string stop1_name, std::string stop2_name, int distance);
-		std::optional<Stop> FindStop(const std::string& name) const;
-		std::optional<Bus> FindBus(const std::string& name) const;
-		std::set<std::string_view> GetBusesByStop(const std::string& stop_name) const;
-		double GetDistance(const std::string& stop1_name, const std::string& stop2_name) const;
+		void SetDistance(std::string from, std::string to, int distance);
+		std::optional<Stop> FindStop(std::string_view name) const;
+		std::optional<Bus> FindBus(std::string_view name) const;
+		std::set<std::string_view> GetBusesByStop(std::string_view stop_name) const;
+		double GetDistance(std::string_view from, std::string_view to) const;
+		std::optional<BusData> GetBusData(std::string_view bus_name) const;
 
 	private:
 		std::deque<Stop> stops_;
@@ -51,6 +61,10 @@ namespace transport_catalogue {
 		std::unordered_map<std::string_view, const Bus*> busname_to_bus_;
 		std::unordered_map<std::string_view, std::set<std::string_view>> stopname_to_busnames_;
 		std::unordered_map<std::pair<const Stop*, const Stop*>, double, detail::StopPtrPairHahser> distances_;
+
+		size_t ComputeRealRouteLength(const Bus& bus) const;
+		size_t CountUniqueStops(const Bus& bus) const;
+		double ComputeGeoRouteLength(const Bus& bus) const;
 	};
 
 }
