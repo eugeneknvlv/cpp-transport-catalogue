@@ -5,12 +5,12 @@ using namespace std;
 
 namespace transport_catalogue {
 
-	void TransportCatalogue::AddStop(std::string name, detail::Coordinates coords) {
-		Stop& stop_in_deque = *(stops_.insert(stops_.end(), {name, coords}));
+	void TransportCatalogue::AddStop(string& name, geo::Coordinates coords) {
+		Stop& stop_in_deque = *(stops_.insert(stops_.end(), { name, coords }));
 		stopname_to_stop_.insert({ stop_in_deque.name, &stop_in_deque });
 	}
 
-	void TransportCatalogue::AddBus(string name, vector<string>& stops, bool is_circled) {
+	void TransportCatalogue::AddBus(string& name, vector<string>& stops, bool is_circled) {
 		vector<const Stop*> stop_ptrs;
 		for (const auto& stop_name : stops) {
 			stop_ptrs.push_back(stopname_to_stop_.at(stop_name));
@@ -42,6 +42,13 @@ namespace transport_catalogue {
 		return nullopt;
 	}
 
+	const std::map<std::string_view, const Bus*>& TransportCatalogue::GetBusnameToBusMap() const {
+		return busname_to_bus_;
+	}
+
+	const std::map<std::string_view, const Stop*>& TransportCatalogue::GetStopnameToStopMap() const {
+		return stopname_to_stop_;
+	}
 
 	set<string_view> TransportCatalogue::GetBusesByStop(string_view stop_name) const {
 		if (!stopname_to_busnames_.count(stop_name)) {
@@ -70,7 +77,7 @@ namespace transport_catalogue {
 		double geo_route_length;
 		size_t real_route_length;
 
-		if (bus.is_circled) {
+		if (bus.is_roundtrip) {
 			stops_count = bus.stops.size() * 2 - 1;
 		}
 		else {
@@ -84,12 +91,22 @@ namespace transport_catalogue {
 		return result;
 	}
 
+	std::vector<geo::Coordinates> TransportCatalogue::GetEveryBusPointCoordinates() const {
+		std::vector<geo::Coordinates> result;
+		for (const auto& [bus_name, bus_ptr] : busname_to_bus_) {
+			for (const Stop* stop : bus_ptr->stops) {
+				result.push_back(stop->coords);
+			}
+		}
+		return result;
+	}
+
 	size_t TransportCatalogue::ComputeRealRouteLength(const Bus& bus) const {
 		size_t result = 0;
 		for (size_t i = 0; i < bus.stops.size() - 1; i++) {
 			result += GetDistance(bus.stops[i]->name, bus.stops[i + 1]->name);
 		}
-		if (bus.is_circled) {
+		if (bus.is_roundtrip) {
 			for (size_t i = 0; i < bus.stops.size() - 1; i++) {
 				result += GetDistance(bus.stops[i + 1]->name, bus.stops[i]->name);
 			}
@@ -112,10 +129,10 @@ namespace transport_catalogue {
 	double TransportCatalogue::ComputeGeoRouteLength(const Bus& bus) const {
 		double result = 0;
 		for (size_t i = 0; i < bus.stops.size() - 1; i++) {
-			result += detail::ComputeDistance(bus.stops[i]->coords, bus.stops[i + 1]->coords);
+			result += geo::ComputeDistance(bus.stops[i]->coords, bus.stops[i + 1]->coords);
 		}
 
-		if (bus.is_circled) {
+		if (bus.is_roundtrip) {
 			result *= 2;
 		}
 

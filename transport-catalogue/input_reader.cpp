@@ -63,17 +63,17 @@ namespace transport_catalogue {
 		}
 
 		parsed::Route Reader::ParseRoute(string& raw_route_string) {
-			bool circled = false;
+			bool is_roundtrip = false;
 			vector<string> stop_names;
 			if (raw_route_string.find('-') != raw_route_string.npos) {
-				circled = true;
+				is_roundtrip = true;
 			}
 			raw_route_string += " >"s;
 			while (raw_route_string.find_first_of("->") != raw_route_string.npos) {
 				stop_names.push_back(raw_route_string.substr(0, raw_route_string.find_first_of("->") - 1));
 				raw_route_string.erase(0, raw_route_string.find_first_of("->") + 2);
 			}
-			return { stop_names, circled };
+			return { stop_names, is_roundtrip };
 		}
 
 		unordered_map<string, int> Reader::ParseDistances(string& raw_stop_string) const {

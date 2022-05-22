@@ -9,8 +9,8 @@ using namespace std;
 namespace transport_catalogue {
 	namespace statistics {
 
-		StatReader::StatReader(TransportCatalogue& catalogue, istream& input, ostream& out)
-			: catalogue_(catalogue)
+		StatReader::StatReader(TransportCatalogue& cat, istream& input, ostream& out)
+			: cat_(cat)
 			, input_(input)
 			, output_(out)
 		{}
@@ -25,35 +25,75 @@ namespace transport_catalogue {
 				key_word = line.substr(0, line.find(' '));
 				if (key_word == "Bus"s) {
 					bus_name = line.substr(4);
-					OutputBusInfo(bus_name);
+					if (cat_.FindBus(bus_name).has_value()) {
+						OutputBusInfo(*(cat_.FindBus(bus_name)));
+					}
+					else {
+						output_ << "Bus " << bus_name << ": not found" << endl;
+					}
 				}
 				else if (key_word == "Stop"s) {
 					stop_name = line.substr(5);
-					OutputStopInfo(stop_name);
+					if (cat_.FindStop(stop_name).has_value()) {
+						OutputStopInfo(*(cat_.FindStop(stop_name)));
+					}
+					else {
+						output_ << "Stop " << stop_name << ": not found" << endl;
+					}
 				}
 			}
 		}
 
-		void StatReader::OutputBusInfo(const string& bus_name) const {
-			if (!(catalogue_.GetBusData(bus_name).has_value())) {
-				cout << "Bus " << bus_name << ": not found" << endl;
-				return;
+		size_t CountUniqueStops(const vector<const Stop*>& stops) {
+			size_t unique_stops_count = 0;
+			unordered_set<string> unique_stops;
+			for (const Stop* stop : stops) {
+				if (unique_stops.insert(stop->name).second) {
+					unique_stops_count++;
+				}
+			}
+			return unique_stops_count;
+		}
+
+		void StatReader::OutputBusInfo(const Bus& bus) const {
+			size_t stops_count = 0, unique_stops_count = 0;
+			double geo_route_length;
+			int real_route_length;
+			if (bus.is_roundtrip) {
+				stops_count = bus.stops.size() * 2 - 1;
+			}
+			else {
+				stops_count = bus.stops.size();
+			}
+			unique_stops_count = CountUniqueStops(bus.stops);
+			geo_route_length = ComputeRouteLength(bus).second;
+			real_route_length = ComputeRouteLength(bus).first;
+			double curvature = real_route_length / geo_route_length;
+			output_ << "Bus " << bus.name << ": " << stops_count << " stops on route, "
+				<< unique_stops_count << " unique stops, " << static_cast<double>(real_route_length)
+				<< " route length, " << curvature << " curvature" << endl;
+		}
+
+		pair<int, double> StatReader::ComputeRouteLength(const Bus& bus) const {
+			double geo_distance = 0;
+			int real_distance = 0;
+			for (size_t i = 0; i < bus.stops.size() - 1; i++) {
+				geo_distance += geo::ComputeDistance(bus.stops[i]->coords, bus.stops[i + 1]->coords);
+				real_distance += cat_.GetDistance(bus.stops[i]->name, bus.stops[i + 1]->name);
+			}
+			if (bus.is_roundtrip) {
+				for (size_t i = 0; i < bus.stops.size() - 1; i++) {
+					real_distance += cat_.GetDistance(bus.stops[i + 1]->name, bus.stops[i]->name);
+				}
+				geo_distance *= 2;
 			}
 
-			BusData bus_data = *(catalogue_.GetBusData(bus_name));
-			output_ << "Bus " << bus_data.name << ": " << bus_data.stops_count << " stops on route, "
-				<< bus_data.unique_stops_count << " unique stops, " << static_cast<double>(bus_data.real_route_length)
-				<< " route length, " << bus_data.curvature << " curvature" << endl;
-		} 
+			return { real_distance, geo_distance };
+		}
 
-		void StatReader::OutputStopInfo(const string& stop_name) const {
-			if (!(catalogue_.FindStop(stop_name).has_value())) {
-				cout << "Stop " << stop_name << ": not found" << endl;
-				return;
-			}
-
-			output_ << "Stop " << stop_name << ": ";
-			set<string_view> buses = catalogue_.GetBusesByStop(stop_name);
+		void StatReader::OutputStopInfo(Stop stop) const {
+			output_ << "Stop " << stop.name << ": ";
+			set<string_view> buses = cat_.GetBusesByStop(stop.name);
 			if (buses.empty()) {
 				output_ << "no buses" << endl;
 				return;

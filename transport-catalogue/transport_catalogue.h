@@ -1,36 +1,18 @@
 #pragma once
 
 #include "geo.h"
+#include "domain.h"
 
 #include <string>
 #include <string_view>
 #include <vector>
 #include <deque>
 #include <unordered_map>
+#include <map>
 #include <optional>
 #include <set>
 
 namespace transport_catalogue {
-
-	struct Stop {
-		std::string name;
-		detail::Coordinates coords;
-	};
-
-	struct Bus {
-		std::string name;
-		std::vector<const Stop*> stops;
-		bool is_circled;
-	};
-
-	struct BusData {
-		std::string name;
-		size_t stops_count;
-		size_t unique_stops_count;
-		size_t real_route_length;
-		double geo_route_length;
-		double curvature;
-	};
 
 	namespace detail {
 		struct StopPtrPairHahser {
@@ -45,20 +27,23 @@ namespace transport_catalogue {
 
 	class TransportCatalogue {
 	public:
-		void AddStop(std::string name, detail::Coordinates coords);
-		void AddBus(std::string name, std::vector<std::string>& stops, bool circled);
+		void AddStop(std::string& name, geo::Coordinates coords);
+		void AddBus(std::string& name, std::vector<std::string>& stops, bool circled);
 		void SetDistance(std::string from, std::string to, int distance);
 		std::optional<Stop> FindStop(std::string_view name) const;
 		std::optional<Bus> FindBus(std::string_view name) const;
+		const std::map<std::string_view, const Bus*>& GetBusnameToBusMap() const;
+		const std::map<std::string_view, const Stop*>& GetStopnameToStopMap() const;
 		std::set<std::string_view> GetBusesByStop(std::string_view stop_name) const;
 		double GetDistance(std::string_view from, std::string_view to) const;
 		std::optional<BusData> GetBusData(std::string_view bus_name) const;
+		std::vector<geo::Coordinates> GetEveryBusPointCoordinates() const;
 
 	private:
 		std::deque<Stop> stops_;
-		std::unordered_map<std::string_view, const Stop*> stopname_to_stop_;
+		std::map<std::string_view, const Stop*> stopname_to_stop_;
 		std::deque<Bus> buses_;
-		std::unordered_map<std::string_view, const Bus*> busname_to_bus_;
+		std::map<std::string_view, const Bus*> busname_to_bus_;
 		std::unordered_map<std::string_view, std::set<std::string_view>> stopname_to_busnames_;
 		std::unordered_map<std::pair<const Stop*, const Stop*>, double, detail::StopPtrPairHahser> distances_;
 

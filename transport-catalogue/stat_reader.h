@@ -11,11 +11,12 @@ namespace transport_catalogue {
 		public:
 			StatReader(TransportCatalogue& cat, std::istream& input, std::ostream& out);
 			void ProcessQueries() const;
-			void OutputBusInfo(const std::string& bus_name) const;
-			void OutputStopInfo(const std::string& stop_name) const;
+			void OutputBusInfo(const Bus& bus) const;
+			void OutputStopInfo(Stop stop) const;
+			std::pair<int, double> ComputeRouteLength(const Bus& bus) const;
 
 		private:
-			TransportCatalogue& catalogue_;
+			TransportCatalogue& cat_;
 			std::istream& input_;
 			std::ostream& output_;
 		};
