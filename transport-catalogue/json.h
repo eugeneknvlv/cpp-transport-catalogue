@@ -20,17 +20,9 @@ namespace json {
         using runtime_error::runtime_error;
     };
 
-    class Node {
+    class Node : public NodeData {
     public:
-        /* –еализуйте Node, использу€ std::variant */
-        Node() = default;
-        Node(Array array);
-        Node(Dict map);
-        Node(int value);
-        Node(std::string value);
-        Node(double value);
-        Node(bool value);
-        Node(std::nullptr_t);
+        using variant::variant;
 
         bool IsInt() const;
         bool IsDouble() const;
@@ -49,19 +41,16 @@ namespace json {
         const Dict& AsMap() const;
 
         NodeData GetValue() const {
-            return data_;
+            return *this;
         }
 
         bool operator==(const Node& other) const {
-            return data_ == other.data_;
+            return *this == other;
         }
 
         bool operator!=(const Node& other) const {
-            return data_ != other.data_;
+            return *this != other;
         }
-
-    private:
-        NodeData data_;
     };
 
     class Document {

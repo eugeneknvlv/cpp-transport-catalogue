@@ -16,33 +16,15 @@ namespace transport_catalogue {
 			//ParseJsonDocument();
 		}
 
-		//void JsonReader::ParseJsonDocument() const {
-		//	/*
-		//		{
-		//			"base_requests" : [ {...}, {...}, {...}, ... ]
-		//			"stat_requests" : [ {...}, {...}, {...}, ... ]
-		//		}
-		//	*/
-		//	for (const auto& [request_type, requests_node] : (json_document_.GetRoot()).AsMap()) {
-		//		if (request_type == "base_requests"s) {
-		//			ProcessBaseRequests(requests_node);
-		//		}
-		//		else {
-		//			ProcessStatRequests(requests_node);
-		//		}
-		//	}
-		//}
-
 		// ------------------------ Base requests processing ------------------------ //
-		void JsonReader::ProcessBaseRequests(/*const json::Node& base_root*/) const {
+		void JsonReader::ProcessBaseRequests(/*const json::Node& base_root*/) {
 			json::Array requests_array = json_document_.GetRoot().AsMap().at("base_requests"s).AsArray();
 
 			// Loop 1 - process stops
 			for (const json::Node& single_request : requests_array) {   // [ {...}, {...}, {...}, ... ]
 				std::string request_type = ((single_request.AsMap()).at("type"s)).AsString();
 				if (request_type == "Stop"s) {
-					Stop parsed_stop = ParseStopWithoutDistances(single_request);
-					catalogue_.AddStop(parsed_stop.name, parsed_stop.coords);
+					ParseStopWithoutDistances(single_request);
 				}
 			}
 
@@ -50,11 +32,7 @@ namespace transport_catalogue {
 			for (const json::Node& single_request : requests_array) {   // [ {...}, {...}, {...}, ... ]
 				std::string request_type = ((single_request.AsMap()).at("type"s)).AsString();
 				if (request_type == "Stop"s) {
-					std::string current_stop_name = single_request.AsMap().at("name"s).AsString();
-					json::Dict road_distances = single_request.AsMap().at("road_distances"s).AsMap();
-					for (const auto& [stop_name, dist_node] : road_distances) {
-						catalogue_.SetDistance(current_stop_name, stop_name, dist_node.AsInt());
-					}
+					ParseDistance(single_request);
 				}
 			}
 
@@ -62,20 +40,27 @@ namespace transport_catalogue {
 			for (const json::Node& single_request : requests_array) {   // [ {...}, {...}, {...}, ... ]
 				std::string request_type = ((single_request.AsMap()).at("type"s)).AsString();
 				if (request_type == "Bus"s) {
-					ParsedBus parsed_bus = ParseBus(single_request);
-					catalogue_.AddBus(parsed_bus.name, parsed_bus.stop_names, parsed_bus.is_roundtrip);
+					ParseBus(single_request);
 				}
 			}
 		}
 
-		Stop JsonReader::ParseStopWithoutDistances(const json::Node& stop_node) const {
+		void JsonReader::ParseStopWithoutDistances(const json::Node& stop_node) {
 			json::Dict stop_info_map = stop_node.AsMap();
 			std::string stop_name = stop_info_map.at("name"s).AsString();
 			geo::Coordinates coordinates = { stop_info_map.at("latitude"s).AsDouble(), stop_info_map.at("longitude"s).AsDouble() };
-			return { stop_name, coordinates };
+			catalogue_.AddStop(stop_name, coordinates);
 		}
 
-		ParsedBus JsonReader::ParseBus(const json::Node& bus_node) const {
+		void JsonReader::ParseDistance(const json::Node& stop_node) {
+			std::string current_stop_name = stop_node.AsMap().at("name"s).AsString();
+			json::Dict road_distances = stop_node.AsMap().at("road_distances"s).AsMap();
+			for (const auto& [stop_name, dist_node] : road_distances) {
+				catalogue_.SetDistance(current_stop_name, stop_name, dist_node.AsInt());
+			}
+		}
+
+		void JsonReader::ParseBus(const json::Node& bus_node) {
 			json::Dict bus_node_as_map = bus_node.AsMap();
 			std::string name = bus_node_as_map.at("name"s).AsString();
 			bool is_roundtrip = bus_node_as_map.at("is_roundtrip"s).AsBool();
@@ -83,7 +68,7 @@ namespace transport_catalogue {
 			for (const json::Node& stop_node : bus_node_as_map.at("stops"s).AsArray()) {
 				stop_names.push_back(stop_node.AsString());
 			}
-			return { name, stop_names, is_roundtrip };
+			catalogue_.AddBus(name, stop_names, is_roundtrip);
 		}
 		//-------------------- Base requests processing end ---------------------//
 

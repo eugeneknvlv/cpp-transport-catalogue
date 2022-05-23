@@ -247,96 +247,53 @@ namespace json {
                 input.putback(c);
                 return LoadNumber(input);
             }
-
-            //if (c == '[') {
-            //    return LoadArray(input);
-            //}
-            //else if (c == '{') {
-            //    return LoadDict(input);
-            //}
-            //else if (c == '"') {
-            //    return LoadString(input);
-            //}
-            //else {
-            //    input.putback(c);
-            //    return LoadNumber(input);
-            //}
         }
-
-    }  // namespace
-
-    Node::Node(Array array)
-        : data_(move(array))
-    {}
-
-    Node::Node(Dict map)
-        : data_(move(map))
-    {}
-
-    Node::Node(int value)
-        : data_(value)
-    {}
-
-    Node::Node(string value)
-        : data_(move(value))
-    {}
-
-    Node::Node(double value)
-        : data_(value)
-    {}
-
-    Node::Node(bool value)
-        : data_(value)
-    {}
-
-    Node::Node(std::nullptr_t)
-        : data_(nullptr)
-    {}
+    } // anonymous namespace
 
     bool Node::IsInt() const {
-        return holds_alternative<int>(data_);
+        return holds_alternative<int>(*this);
     }
 
     bool Node::IsDouble() const {
-        return holds_alternative<int>(data_) || holds_alternative<double>(data_);
+        return holds_alternative<int>(*this) || holds_alternative<double>(*this);
     }
 
     bool Node::IsPureDouble() const {
-        return holds_alternative<double>(data_);
+        return holds_alternative<double>(*this);
     }
 
     bool Node::IsBool() const {
-        return holds_alternative<bool>(data_);
+        return holds_alternative<bool>(*this);
     }
 
     bool Node::IsString() const {
-        return holds_alternative<string>(data_);
+        return holds_alternative<string>(*this);
     }
 
     bool Node::IsNull() const {
-        return holds_alternative<nullptr_t>(data_);
+        return holds_alternative<nullptr_t>(*this);
     }
 
     bool Node::IsArray() const {
-        return holds_alternative<Array>(data_);
+        return holds_alternative<Array>(*this);
     }
 
     bool Node::IsMap() const {
-        return holds_alternative<Dict>(data_);
+        return holds_alternative<Dict>(*this);
     }
 
     int Node::AsInt() const {
         if (!IsInt()) {
             throw logic_error("logic error");
         }
-        return get<int>(data_);
+        return get<int>(*this);
     }
 
     bool Node::AsBool() const {
         if (!IsBool()) {
             throw logic_error("logic error");
         }
-        return get<bool>(data_);
+        return get<bool>(*this);
     }
 
     double Node::AsDouble() const {
@@ -344,10 +301,10 @@ namespace json {
             throw logic_error("logic error");
         }
         try {
-            return get<double>(data_);
+            return get<double>(*this);
         }
         catch (...) {
-            return get<int>(data_);
+            return get<int>(*this);
         }
     }
 
@@ -355,21 +312,21 @@ namespace json {
         if (!IsString()) {
             throw logic_error("logic error");
         }
-        return get<string>(data_);
+        return get<string>(*this);
     }
 
     const Array& Node::AsArray() const {
         if (!IsArray()) {
             throw logic_error("logic error");
         }
-        return get<Array>(data_);
+        return get<Array>(*this);
     }
 
     const Dict& Node::AsMap() const {
         if (!IsMap()) {
             throw logic_error("logic error");
         }
-        return get<Dict>(data_);
+        return get<Dict>(*this);
     }
 
 

@@ -5,12 +5,12 @@ using namespace std;
 
 namespace transport_catalogue {
 
-	void TransportCatalogue::AddStop(string& name, geo::Coordinates coords) {
+	void TransportCatalogue::AddStop(const string& name, geo::Coordinates coords) {
 		Stop& stop_in_deque = *(stops_.insert(stops_.end(), { name, coords }));
 		stopname_to_stop_.insert({ stop_in_deque.name, &stop_in_deque });
 	}
 
-	void TransportCatalogue::AddBus(string& name, vector<string>& stops, bool is_circled) {
+	void TransportCatalogue::AddBus(const string& name, const vector<string>& stops, bool is_circled) {
 		vector<const Stop*> stop_ptrs;
 		for (const auto& stop_name : stops) {
 			stop_ptrs.push_back(stopname_to_stop_.at(stop_name));
@@ -23,7 +23,7 @@ namespace transport_catalogue {
 		}
 	}
 
-	void TransportCatalogue::SetDistance(string from, string to, int distance) {
+	void TransportCatalogue::SetDistance(const string& from, const string& to, int distance) {
 		pair<const Stop*, const Stop*> stop_pair = { stopname_to_stop_.at(from), stopname_to_stop_.at(to) };
 		distances_.insert({ stop_pair, distance });
 	}
@@ -44,10 +44,6 @@ namespace transport_catalogue {
 
 	const std::map<std::string_view, const Bus*>& TransportCatalogue::GetBusnameToBusMap() const {
 		return busname_to_bus_;
-	}
-
-	const std::map<std::string_view, const Stop*>& TransportCatalogue::GetStopnameToStopMap() const {
-		return stopname_to_stop_;
 	}
 
 	set<string_view> TransportCatalogue::GetBusesByStop(string_view stop_name) const {

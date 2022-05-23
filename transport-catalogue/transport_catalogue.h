@@ -27,13 +27,12 @@ namespace transport_catalogue {
 
 	class TransportCatalogue {
 	public:
-		void AddStop(std::string& name, geo::Coordinates coords);
-		void AddBus(std::string& name, std::vector<std::string>& stops, bool circled);
-		void SetDistance(std::string from, std::string to, int distance);
+		void AddStop(const std::string& name, geo::Coordinates coords);
+		void AddBus(const std::string& name, const std::vector<std::string>& stops, bool circled);
+		void SetDistance(const std::string& from, const std::string& to, int distance);
 		std::optional<Stop> FindStop(std::string_view name) const;
 		std::optional<Bus> FindBus(std::string_view name) const;
 		const std::map<std::string_view, const Bus*>& GetBusnameToBusMap() const;
-		const std::map<std::string_view, const Stop*>& GetStopnameToStopMap() const;
 		std::set<std::string_view> GetBusesByStop(std::string_view stop_name) const;
 		double GetDistance(std::string_view from, std::string_view to) const;
 		std::optional<BusData> GetBusData(std::string_view bus_name) const;

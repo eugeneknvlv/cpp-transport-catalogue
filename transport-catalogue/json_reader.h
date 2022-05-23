@@ -25,7 +25,7 @@ namespace transport_catalogue {
 			{}
 
 			void LoadJSON();
-			void ProcessBaseRequests() const;
+			void ProcessBaseRequests();
 			void ProcessStatRequests() const;
 			map_renderer::detail::RenderSettings GetRenderSettings() const;
 
@@ -38,8 +38,9 @@ namespace transport_catalogue {
 			//void ParseJsonDocument() const;
 
 			//---------------- Base requests processing ----------------//
-			Stop ParseStopWithoutDistances(const json::Node& stop_node) const;
-			ParsedBus ParseBus(const json::Node& bus_node) const;
+			void ParseStopWithoutDistances(const json::Node& stop_node);
+			void ParseDistance(const json::Node& stop_node);
+			void ParseBus(const json::Node& bus_node);
 
 			//---------------- Stat requests processing ----------------//
 			json::Dict ProcessStopStatRequest(const json::Node& stop_node) const;
