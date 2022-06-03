@@ -20,9 +20,10 @@ namespace json {
         using runtime_error::runtime_error;
     };
 
-    class Node : public NodeData {
+    class Node final : private NodeData {
     public:
         using variant::variant;
+        using Value = variant;
 
         bool IsInt() const;
         bool IsDouble() const;
@@ -36,11 +37,18 @@ namespace json {
         int AsInt() const;
         bool AsBool() const;
         double AsDouble() const;
+        std::string& AsString();
+        Array& AsArray();
+        Dict& AsMap();
         const std::string& AsString() const;
         const Array& AsArray() const;
         const Dict& AsMap() const;
 
-        NodeData GetValue() const {
+        Value& GetValue() {
+            return *this;
+        }
+
+        const NodeData& GetNodeData() const {
             return *this;
         }
 
@@ -49,7 +57,7 @@ namespace json {
         }
 
         bool operator!=(const Node& other) const {
-            return *this != other;
+            return !(*this == other);
         }
     };
 

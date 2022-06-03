@@ -308,7 +308,28 @@ namespace json {
         }
     }
 
-    const string& Node::AsString() const {
+    string& Node::AsString() {
+        if (!IsString()) {
+            throw logic_error("logic error");
+        }
+        return get<string>(*this);
+    }
+
+    Array& Node::AsArray() {
+        if (!IsArray()) {
+            throw logic_error("logic error");
+        }
+        return get<Array>(*this);
+    }
+
+    Dict& Node::AsMap() {
+        if (!IsMap()) {
+            throw logic_error("logic error");
+        }
+        return get<Dict>(*this);
+    }
+
+    const std::string& Node::AsString() const {
         if (!IsString()) {
             throw logic_error("logic error");
         }
@@ -329,7 +350,6 @@ namespace json {
         return get<Dict>(*this);
     }
 
-
     Document::Document(Node root)
         : root_(move(root)) {
     }
@@ -338,100 +358,110 @@ namespace json {
         return root_;
     }
 
-    Document Load(istream& input) {
-        return Document{ LoadNode(input) };
-    }
+    void PrintNode(const Node& value, const PrintContext& ctx);
 
     template <typename Value>
     void PrintValue(const Value& value, const PrintContext& ctx) {
-        auto& out = ctx.out;
-        /*ctx.PrintIndent();*/
-        out << value;
+        ctx.out << value;
     }
 
-    void PrintValue(std::nullptr_t, const PrintContext& ctx) {
-        auto& out = ctx.out;
-        ctx.PrintIndent();
-        out << "null"sv;
-    }
-
-    void PrintValue(const bool value, const PrintContext& ctx) {
-        auto& out = ctx.out;
-        ctx.PrintIndent();
-        out << boolalpha;
-        out << value;
-    }
-
-    void PrintValue(const std::string& value, const PrintContext& ctx) {
-        auto& out = ctx.out;
-        ctx.PrintIndent();
-        out << "\""s;
+    void PrintString(const std::string& value, std::ostream& out) {
+        out.put('"');
         for (const char c : value) {
             switch (c) {
-            case '\\':
-                out << "\\\\"s;
+            case '\r':
+                out << "\\r"sv;
                 break;
             case '\n':
-                out << "\\n"s;
+                out << "\\n"sv;
                 break;
-            case '\r':
-                out << "\\r"s;
-                break;
-            case '\"':
-                out << "\\\""s;
-                break;
+            case '"':
+                // Символы " и \ выводятся как \" или \\, соответственно
+                [[fallthrough]];
+            case '\\':
+                out.put('\\');
+                [[fallthrough]];
             default:
-                out << c;
+                out.put(c);
+                break;
             }
-
         }
-        out << "\""s;
+        out.put('"');
     }
 
-    void PrintNode(const Node& node, const PrintContext& ctx);
-
-    void PrintValue(const Array& arr, const PrintContext& ctx) {
-        auto& out = ctx.out;
-        /*ctx.PrintIndent();*/
-        out << '[' << endl;
-        bool first = true;
-        for (const auto& node : arr) {
-            if (!first) {
-                out << ',' << endl;
-            }
-            PrintNode(node, ctx.Indented());
-            first = false;
-        }
-        out << endl;
-        ctx.PrintIndent();
-        out << ']';
+    template <>
+    void PrintValue<std::string>(const std::string& value, const PrintContext& ctx) {
+        PrintString(value, ctx.out);
     }
 
-    void PrintValue(const Dict& dict, const PrintContext& ctx) {
-        auto& out = ctx.out;
-        ctx.PrintIndent();
-        out << '{' << endl;
-        bool first = true;
-        for (const auto& [name, value] : dict) {
-            if (!first) {
-                out << ',' << endl;
-            }
+    template <>
+    void PrintValue<std::nullptr_t>(const std::nullptr_t&, const PrintContext& ctx) {
+        ctx.out << "null"sv;
+    }
 
-            PrintValue(name, ctx.Indented());
-            out << ": "s;
-            PrintNode(value, ctx.Indented());
-            first = false;
+    // В специализаци шаблона PrintValue для типа bool параметр value передаётся
+    // по константной ссылке, как и в основном шаблоне.
+    // В качестве альтернативы можно использовать перегрузку:
+    // void PrintValue(bool value, const PrintContext& ctx);
+    template <>
+    void PrintValue<bool>(const bool& value, const PrintContext& ctx) {
+        ctx.out << (value ? "true"sv : "false"sv);
+    }
+
+    template <>
+    void PrintValue<Array>(const Array& nodes, const PrintContext& ctx) {
+        std::ostream& out = ctx.out;
+        out << "[\n"sv;
+        bool first = true;
+        auto inner_ctx = ctx.Indented();
+        for (const Node& node : nodes) {
+            if (first) {
+                first = false;
+            }
+            else {
+                out << ",\n"sv;
+            }
+            inner_ctx.PrintIndent();
+            PrintNode(node, inner_ctx);
         }
-        out << endl;
+        out.put('\n');
         ctx.PrintIndent();
-        out << '}';
+        out.put(']');
+    }
+
+    template <>
+    void PrintValue<Dict>(const Dict& nodes, const PrintContext& ctx) {
+        std::ostream& out = ctx.out;
+        out << "{\n"sv;
+        bool first = true;
+        auto inner_ctx = ctx.Indented();
+        for (const auto& [key, node] : nodes) {
+            if (first) {
+                first = false;
+            }
+            else {
+                out << ",\n"sv;
+            }
+            inner_ctx.PrintIndent();
+            PrintString(key, ctx.out);
+            out << ": "sv;
+            PrintNode(node, inner_ctx);
+        }
+        out.put('\n');
+        ctx.PrintIndent();
+        out.put('}');
     }
 
     void PrintNode(const Node& node, const PrintContext& ctx) {
         std::visit(
-            [&ctx](const auto& value) { PrintValue(value, ctx); },
-            node.GetValue()
-        );
+            [&ctx](const auto& value) {
+                PrintValue(value, ctx);
+            },
+            node.GetNodeData());
+    }
+
+    Document Load(std::istream& input) {
+        return Document{ LoadNode(input) };
     }
 
     void Print(const Document& doc, std::ostream& output) {

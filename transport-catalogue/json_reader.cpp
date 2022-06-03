@@ -76,20 +76,22 @@ namespace transport_catalogue {
 		//-------------------- Stat requests processing ------------------------//
 		void JsonReader::ProcessStatRequests(/*const json::Node& stat_root*/) const {
 			json::Array requests_array = json_document_.GetRoot().AsMap().at("stat_requests"s).AsArray();
-			json::Array result_array;
+			json::Builder builder{};
+			json::ArrayContext arr_ctx = builder.StartArray();
 			for (const json::Node& single_request : requests_array) {
 				std::string request_type = ((single_request.AsMap()).at("type"s)).AsString();
 				if (request_type == "Stop"s) {
-					result_array.push_back(ProcessStopStatRequest(single_request));
+					arr_ctx.Value(ProcessStopStatRequest(single_request));
 				}
 				else if (request_type == "Bus"s) {
-					result_array.push_back(ProcessBusStatRequest(single_request));
+					arr_ctx.Value(ProcessBusStatRequest(single_request));
 				}
 				else {
-					result_array.push_back(ProcessMapStatRequest(single_request));
+					arr_ctx.Value(ProcessMapStatRequest(single_request));
 				}
 			}
-			json::Print(json::Document(json::Node(result_array)), output_);
+			json::Builder result = arr_ctx.EndArray();
+			json::Print(json::Document(result.Build()), output_);
 		}
 
 		json::Dict JsonReader::ProcessStopStatRequest(const json::Node& stop_node) const {
