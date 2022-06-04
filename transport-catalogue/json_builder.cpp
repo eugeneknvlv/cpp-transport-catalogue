@@ -46,7 +46,7 @@ namespace json {
 			nodes_stack_.top()->IsArray() ||
 			(nodes_stack_.top()->IsMap() && last_method_called_ == POSSIBLE_METHOD_CALLS::KEY)))
 		{
-			throw std::logic_error("some logic error");
+			throw std::logic_error("Value inserting error");
 		}
 
 		if (last_method_called_ == POSSIBLE_METHOD_CALLS::CONSTRUCTOR) {
@@ -69,7 +69,7 @@ namespace json {
 			|| last_method_called_ == POSSIBLE_METHOD_CALLS::KEY
 			|| nodes_stack_.top()->IsArray()))
 		{
-			throw std::logic_error("start_dict error");
+			throw std::logic_error("Dict starting error");
 		}
 
 		if (last_method_called_ == POSSIBLE_METHOD_CALLS::CONSTRUCTOR) {
@@ -95,7 +95,7 @@ namespace json {
 			|| last_method_called_ == POSSIBLE_METHOD_CALLS::KEY
 			|| nodes_stack_.top()->IsArray()))
 		{
-			throw std::logic_error("start_dict error");
+			throw std::logic_error("Array starting error");
 		}
 
 		if (last_method_called_ == POSSIBLE_METHOD_CALLS::CONSTRUCTOR) {
@@ -118,7 +118,7 @@ namespace json {
 
 	Builder& Builder::EndDict() {
 		if (!nodes_stack_.top()->IsMap()) {
-			throw std::logic_error("end_dict error");
+			throw std::logic_error("Dict ending error");
 		}
 		nodes_stack_.pop();
 		return *this;
@@ -126,7 +126,7 @@ namespace json {
 
 	Builder& Builder::EndArray() {
 		if (!nodes_stack_.top()->IsArray()) {
-			throw std::logic_error("end_array error");
+			throw std::logic_error("Array ending error");
 		}
 		nodes_stack_.pop();
 		return *this;
@@ -134,7 +134,7 @@ namespace json {
 
 	Node Builder::Build() {
 		if (nodes_stack_.size() > 1 || last_method_called_ == POSSIBLE_METHOD_CALLS::CONSTRUCTOR) {
-			throw std::logic_error("building error");
+			throw std::logic_error("Building error");
 		}
 		return root_;
 	}
