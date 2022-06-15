@@ -1,5 +1,6 @@
 #include "json_reader.h"
 
+
 #include <set>
 #include <string_view>
 #include <optional>
@@ -43,6 +44,10 @@ namespace transport_catalogue {
 					ParseBus(single_request);
 				}
 			}
+
+			catalogue_.SetRoutingSettings(GetRoutingSettings());
+			catalogue_.BuildGraph();
+			router_.InitRouter();
 		}
 
 		void JsonReader::ParseStopWithoutDistances(const json::Node& stop_node) {
@@ -74,7 +79,7 @@ namespace transport_catalogue {
 
 
 		//-------------------- Stat requests processing ------------------------//
-		void JsonReader::ProcessStatRequests(/*const json::Node& stat_root*/) const {
+		void JsonReader::ProcessStatRequests() const {
 			json::Array requests_array = json_document_.GetRoot().AsMap().at("stat_requests"s).AsArray();
 			json::Builder builder{};
 			json::ArrayContext arr_ctx = builder.StartArray();
@@ -86,9 +91,13 @@ namespace transport_catalogue {
 				else if (request_type == "Bus"s) {
 					arr_ctx.Value(ProcessBusStatRequest(single_request));
 				}
-				else {
+				else if (request_type == "Map"s) {
 					arr_ctx.Value(ProcessMapStatRequest(single_request));
 				}
+				else if (request_type == "Route"s) {
+					// TODO
+					arr_ctx.Value(ProcessRouteStatRequest(single_request));
+				} 
 			}
 			json::Builder result = arr_ctx.EndArray();
 			json::Print(json::Document(result.Build()), output_);
@@ -157,6 +166,58 @@ namespace transport_catalogue {
 			(map_renderer.RenderMap()).Render(map_oss);
 
 			return { {"request_id"s, request_id}, {"map"s, map_oss.str()} };
+		}
+
+		json::Dict JsonReader::ProcessRouteStatRequest(const json::Node& route_node) const {
+			int request_id = route_node.AsMap().at("id"s).AsInt();
+			
+			std::string from = route_node.AsMap().at("from"s).AsString();
+			size_t from_id = catalogue_.GetVertexIdByStopName(from);
+			std::string to = route_node.AsMap().at("to"s).AsString();
+			size_t to_id = catalogue_.GetVertexIdByStopName(to);
+			std::optional<TransportCatalogue::Route> route = router_.BuildRoute(from_id, to_id);
+			if (!route.has_value()) {
+				return { {"request_id"s, request_id}, {"error_message"s, "not found"s}};
+			}
+			else if ((*route).edges.empty()) {
+				return
+				{
+					{"request_id"s, request_id},
+					{"total_time"s, 0},
+					{"items"s, json::Array(0)}
+				};
+			}
+
+			json::Builder builder{};
+			json::ArrayContext arr_ctx = builder.StartDict()
+													.Key("request_id").Value(request_id)
+													.Key("total_time"s).Value((*route).weight)
+													.Key("items"s).StartArray();
+
+			int bus_waiting_time = catalogue_.GetBusWaitingTime();
+			std::string_view waiting_stop;
+			std::string_view bus_name;
+			double travel_time;
+			int span_count;
+
+			for (graph::EdgeId edge_id : (*route).edges) {
+				waiting_stop = catalogue_.GetEdgeStops(edge_id).first;
+				bus_name = catalogue_.GetEdgeBusName(edge_id);
+				travel_time = catalogue_.GetEdgeWeight(edge_id) - bus_waiting_time;
+				span_count = catalogue_.GetEdgeSpanCount(edge_id);
+				arr_ctx.StartDict()
+							.Key("type"s).Value("Wait"s)
+							.Key("stop_name"s).Value(std::string(waiting_stop))
+							.Key("time").Value(bus_waiting_time)
+						.EndDict()
+						.StartDict()
+							.Key("type"s).Value("Bus"s)
+							.Key("bus").Value(std::string(bus_name))
+							.Key("span_count"s).Value(span_count)
+							.Key("time").Value(travel_time)
+						.EndDict();
+			}
+			return arr_ctx.EndArray().Build().AsMap();
 		}
 
 		std::pair<int, double> JsonReader::ComputeRouteLength(const Bus& bus) const {
@@ -249,5 +310,16 @@ namespace transport_catalogue {
 			}
 			return result;
 		}
+		//------------------- Render settings processing end ---------------------//
+		
+		//------------------- Routing settings processing -----------------------//
+		RoutingSettings JsonReader::GetRoutingSettings() const {
+			json::Dict routing_settings_map = json_document_.GetRoot().AsMap().at("routing_settings"s).AsMap();
+			int bus_wait_time = routing_settings_map.at("bus_wait_time"s).AsInt();
+			int bus_velocity = routing_settings_map.at("bus_velocity"s).AsInt();
+			return { bus_wait_time, bus_velocity };
+		}
+
+
 	} // namespace json_handler
 } // namespace transport_catalogue

@@ -28,6 +28,42 @@ namespace transport_catalogue {
 		distances_.insert({ stop_pair, distance });
 	}
 
+	void TransportCatalogue::SetRoutingSettings(RoutingSettings rt) {
+		routing_settings_ = rt;
+	}
+
+	void TransportCatalogue::BuildGraph() {
+		graph_ = graph::DirectedWeightedGraph<double>(stops_.size());
+		for (const Bus& bus : buses_) {
+			size_t current_bus_stops_count = (bus.stops).size();
+			for (size_t i = 0; i < current_bus_stops_count; ++i) {
+				const Stop* ith_stop_ptr = bus.stops[i];
+				graph::EdgeId ith_stop_id = distance(stops_.begin(), find(stops_.begin(), stops_.end(), *ith_stop_ptr));
+				double distance_forward = 0.0;
+				double distance_backward = 0.0;
+			 	for (size_t j = i + 1; j < current_bus_stops_count; ++j) {
+					const Stop* jth_stop_ptr = bus.stops[j];
+					const Stop* prev_jth_stop_ptr = bus.stops[j - 1];
+					distance_forward += GetDistance(prev_jth_stop_ptr->name, jth_stop_ptr->name);
+					graph::EdgeId jth_stop_id = distance(stops_.begin(), find(stops_.begin(), stops_.end(), *jth_stop_ptr));
+					graph_.AddEdge
+					({
+						ith_stop_id, jth_stop_id, static_cast<char>(j - i), bus.name,
+						routing_settings_.bus_wait_time + distance_forward / routing_settings_.bus_velocity * 60 / 1000
+					});
+					if (!bus.is_roundtrip) {
+						distance_backward += GetDistance(jth_stop_ptr->name, prev_jth_stop_ptr->name);
+						graph_.AddEdge
+						({
+							jth_stop_id, ith_stop_id, static_cast<char>(j - i), bus.name,
+							routing_settings_.bus_wait_time + distance_backward / routing_settings_.bus_velocity * 60 / 1000
+						});
+					}
+				}
+			}
+		}
+	}
+
 	optional<Stop> TransportCatalogue::FindStop(string_view stop_name) const {
 		if (stopname_to_stop_.count(stop_name)) {
 			return *(stopname_to_stop_.at(stop_name));
@@ -135,4 +171,39 @@ namespace transport_catalogue {
 		return result;
 	}
 
+	int TransportCatalogue::GetEdgeSpanCount(graph::EdgeId id) const {
+		return graph_.GetEdge(id).span_count;
+	}
+
+	std::string_view TransportCatalogue::GetStopNameByVertexId(graph::VertexId id) const {
+		return stops_.at(id).name;
+	}
+
+	graph::VertexId TransportCatalogue::GetVertexIdByStopName(std::string_view stop_name) const {
+		return distance(stops_.begin(), find_if(stops_.begin(), stops_.end(),
+			[stop_name](const Stop& stop) {return stop.name == string(stop_name); }));
+	}
+
+	std::pair<std::string_view, std::string_view> TransportCatalogue::GetEdgeStops(graph::EdgeId id) const {
+		auto edge = graph_.GetEdge(id);
+		return { GetStopNameByVertexId(edge.from), GetStopNameByVertexId(edge.to) };
+	}
+	
+	std::string_view TransportCatalogue::GetEdgeBusName(graph::EdgeId id) const {
+		auto edge = graph_.GetEdge(id);
+		return edge.bus_name;
+	}
+
+	double TransportCatalogue::GetEdgeWeight(graph::EdgeId id) const {
+		auto edge = graph_.GetEdge(id);
+		return edge.weight;
+	}
+
+	int TransportCatalogue::GetBusWaitingTime() const {
+		return routing_settings_.bus_wait_time;
+	}
+
+	const TransportCatalogue::Graph& TransportCatalogue::GetGraphConstRef() const {
+		return graph_;
+	}
 }
