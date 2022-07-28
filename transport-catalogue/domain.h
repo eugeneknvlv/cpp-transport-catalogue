@@ -14,7 +14,7 @@ namespace transport_catalogue {
 	};
 
 	inline bool operator==(const Stop& lhs, const Stop& rhs) {
-		return lhs == rhs;
+		return lhs.name == rhs.name && lhs.coords == rhs.coords;
 	}
 
 	struct Bus {

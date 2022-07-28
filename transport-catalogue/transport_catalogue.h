@@ -4,6 +4,7 @@
 #include "domain.h"
 #include "graph.h"
 #include "router.h"
+#include "map_renderer.h"
 
 #include <string>
 #include <string_view>
@@ -34,11 +35,24 @@ namespace transport_catalogue {
 
 		void AddStop(const std::string& name, geo::Coordinates coords);
 		void AddBus(const std::string& name, const std::vector<std::string>& stops, bool circled);
+
 		void SetDistance(const std::string& from, const std::string& to, int distance);
 		void SetRoutingSettings(RoutingSettings rt);
+		void SetRenderSettings(map_renderer::detail::RenderSettings&& settings);
+		void SetGraph(Graph&& graph);
+
 		void BuildGraph(); 
+
 		std::optional<Stop> FindStop(std::string_view name) const;
 		std::optional<Bus> FindBus(std::string_view name) const;
+
+		const std::deque<Stop>& GetStops() const;
+		const std::deque<Bus>& GetBuses() const;
+		const std::unordered_map<std::pair<const Stop*, const Stop*>, double, detail::StopPtrPairHahser>& GetDistances() const;
+		size_t GetStopIndex(const Stop* stop) const;
+		std::string GetStopnameByIndex(size_t index) const;
+		const map_renderer::detail::RenderSettings& GetRenderSettings() const;
+		const RoutingSettings& GetRoutingSettings() const;
 		const std::map<std::string_view, const Bus*>& GetBusnameToBusMap() const;
 		std::set<std::string_view> GetBusesByStop(std::string_view stop_name) const;
 		double GetDistance(std::string_view from, std::string_view to) const;
@@ -48,7 +62,7 @@ namespace transport_catalogue {
 		std::string_view GetStopNameByVertexId(graph::VertexId id) const;
 		graph::VertexId GetVertexIdByStopName(std::string_view stop_name) const;
 		std::pair<std::string_view, std::string_view> GetEdgeStops(graph::EdgeId id) const;
-		std::string_view GetEdgeBusName(graph::EdgeId id) const;
+		std::string GetEdgeBusName(graph::EdgeId id) const;
 		double GetEdgeWeight(graph::EdgeId id) const;
 		int GetBusWaitingTime() const;
 		const Graph& GetGraphConstRef() const;
@@ -60,6 +74,7 @@ namespace transport_catalogue {
 		std::map<std::string_view, const Bus*> busname_to_bus_;
 		std::unordered_map<std::string_view, std::set<std::string_view>> stopname_to_busnames_;
 		std::unordered_map<std::pair<const Stop*, const Stop*>, double, detail::StopPtrPairHahser> distances_;
+		map_renderer::detail::RenderSettings render_settings_;
 		RoutingSettings routing_settings_;
 		Graph graph_;
 

@@ -20,25 +20,23 @@ namespace transport_catalogue {
 
 		class JsonReader {
 		public:
-			JsonReader(TransportCatalogue& catalogue, std::istream& input, std::ostream& output)
+			using Router = graph::Router<double>;
+
+			JsonReader(TransportCatalogue& catalogue)
 				: catalogue_(catalogue)
-				, router_(catalogue_.GetGraphConstRef())
-				, input_(input)
-				, output_(output)
 			{}
 
-			void LoadJSON();
+			void LoadJSON(std::istream& input);
 			void ProcessBaseRequests();
-			void ProcessStatRequests() const;
+			void ProcessStatRequests(std::ostream& output) const;
 			map_renderer::detail::RenderSettings GetRenderSettings() const;
 			RoutingSettings GetRoutingSettings() const;
+			std::string GetSerializationFilename() const;
+			TransportCatalogue& GetCatalogue() {return catalogue_;}
 
 		private:
 			TransportCatalogue& catalogue_;
-			graph::Router<double> router_;
 			json::Document json_document_;
-			std::istream& input_;
-			std::ostream& output_;
 
 			//---------------- Base requests processing ----------------//
 			void ParseStopWithoutDistances(const json::Node& stop_node);
@@ -49,7 +47,7 @@ namespace transport_catalogue {
 			json::Dict ProcessStopStatRequest(const json::Node& stop_node) const;
 			json::Dict ProcessBusStatRequest(const json::Node& bus_node) const;
 			json::Dict ProcessMapStatRequest(const json::Node& map_node) const;
-			json::Dict ProcessRouteStatRequest(const json::Node& route_node) const;
+			json::Dict ProcessRouteStatRequest(const json::Node& route_node, const Router& router) const;
 			std::pair<int, double> ComputeRouteLength(const Bus& bus) const;
 		};
 

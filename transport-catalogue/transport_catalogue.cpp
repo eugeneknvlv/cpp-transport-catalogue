@@ -32,6 +32,14 @@ namespace transport_catalogue {
 		routing_settings_ = rt;
 	}
 
+	void TransportCatalogue::SetRenderSettings(map_renderer::detail::RenderSettings&& settings) {
+		render_settings_ = std::move(settings);
+	}
+
+	void TransportCatalogue::SetGraph(Graph&& graph) {
+		graph_ = std::move(graph);
+	}
+
 	void TransportCatalogue::BuildGraph() {
 		graph_ = graph::DirectedWeightedGraph<double>(stops_.size());
 		for (const Bus& bus : buses_) {
@@ -48,14 +56,14 @@ namespace transport_catalogue {
 					graph::EdgeId jth_stop_id = distance(stops_.begin(), find(stops_.begin(), stops_.end(), *jth_stop_ptr));
 					graph_.AddEdge
 					({
-						ith_stop_id, jth_stop_id, static_cast<char>(j - i), bus.name,
+						ith_stop_id, jth_stop_id, j - i, bus.name,
 						routing_settings_.bus_wait_time + distance_forward / routing_settings_.bus_velocity * 60 / 1000
 					});
 					if (!bus.is_roundtrip) {
 						distance_backward += GetDistance(jth_stop_ptr->name, prev_jth_stop_ptr->name);
 						graph_.AddEdge
 						({
-							jth_stop_id, ith_stop_id, static_cast<char>(j - i), bus.name,
+							jth_stop_id, ith_stop_id, j - i, bus.name,
 							routing_settings_.bus_wait_time + distance_backward / routing_settings_.bus_velocity * 60 / 1000
 						});
 					}
@@ -76,6 +84,35 @@ namespace transport_catalogue {
 			return *(busname_to_bus_.at(bus_name));
 		}
 		return nullopt;
+	}
+
+	const std::deque<Stop>& TransportCatalogue::GetStops() const {
+		return stops_;
+	}
+
+	const std::deque<Bus>& TransportCatalogue::GetBuses() const {
+		return buses_;
+	}
+
+	const std::unordered_map<std::pair<const Stop*, const Stop*>, double, detail::StopPtrPairHahser>& TransportCatalogue::GetDistances() const {
+		return distances_;
+	}
+
+	size_t TransportCatalogue::GetStopIndex(const Stop* stop) const {
+		auto it = find(stops_.begin(), stops_.end(), *stop);
+		return distance(stops_.begin(), it);
+	}
+
+	std::string TransportCatalogue::GetStopnameByIndex(size_t index) const {
+		return stops_.at(index).name;
+	}
+
+	const map_renderer::detail::RenderSettings& TransportCatalogue::GetRenderSettings() const {
+		return render_settings_;
+	}
+
+	const RoutingSettings& TransportCatalogue::GetRoutingSettings() const {
+		return routing_settings_;
 	}
 
 	const std::map<std::string_view, const Bus*>& TransportCatalogue::GetBusnameToBusMap() const {
@@ -189,7 +226,7 @@ namespace transport_catalogue {
 		return { GetStopNameByVertexId(edge.from), GetStopNameByVertexId(edge.to) };
 	}
 	
-	std::string_view TransportCatalogue::GetEdgeBusName(graph::EdgeId id) const {
+	std::string TransportCatalogue::GetEdgeBusName(graph::EdgeId id) const {
 		auto edge = graph_.GetEdge(id);
 		return edge.bus_name;
 	}

@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 namespace graph {
 
@@ -21,7 +22,6 @@ namespace graph {
 
     public:
         explicit Router(const Graph& graph);
-        void InitRouter();
 
         struct RouteInfo {
             Weight weight;
@@ -84,15 +84,14 @@ namespace graph {
     template <typename Weight>
     Router<Weight>::Router(const Graph& graph)
         : graph_(graph)
-    {}
+    {
+        auto a = sizeof(RouteInternalData);
+        const size_t vertex_count = graph.GetVertexCount();
+        routes_internal_data_ = { graph.GetVertexCount(), std::vector<std::optional<RouteInternalData>>(graph_.GetVertexCount()) };
 
-    template <typename Weight>
-    void Router<Weight>::InitRouter() {
-        routes_internal_data_ = { graph_.GetVertexCount(), std::vector<std::optional<RouteInternalData>>(graph_.GetVertexCount()) };
+        InitializeRoutesInternalData(graph);
 
-        InitializeRoutesInternalData(graph_);
-
-        const size_t vertex_count = graph_.GetVertexCount();
+        // const size_t vertex_count = graph.GetVertexCount();
         for (VertexId vertex_through = 0; vertex_through < vertex_count; ++vertex_through) {
             RelaxRoutesInternalDataThroughVertex(vertex_count, vertex_through);
         }

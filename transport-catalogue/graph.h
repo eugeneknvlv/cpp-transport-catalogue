@@ -15,10 +15,8 @@ namespace graph {
     struct Edge {
         VertexId from;
         VertexId to;
-        char span_count; // char для уменьшения пространественной сложности, 
-                         // т.к. количество остановок в маршруте ограничено 100, 
-                         // не увидел смысла использовать более объемные типы 
-        std::string_view bus_name;
+        size_t span_count;
+        std::string bus_name;
         Weight weight;
     };
 
@@ -37,6 +35,13 @@ namespace graph {
         size_t GetEdgeCount() const;
         const Edge<Weight>& GetEdge(EdgeId edge_id) const;
         IncidentEdgesRange GetIncidentEdges(VertexId vertex) const;
+
+        typename std::vector<Edge<Weight>>::const_iterator begin() const {
+            return edges_.begin();
+        }
+        typename std::vector<Edge<Weight>>::const_iterator end() const {
+            return edges_.end();
+        }
 
     private:
         std::vector<Edge<Weight>> edges_;

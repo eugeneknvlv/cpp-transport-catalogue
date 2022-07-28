@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package transport_catalogue_serialize;
+
+import "map_renderer.proto";
+import "graph.proto";
+
+message Coordinates {
+    double lat = 1;
+    double lng = 2;
+}
+
+message Stop {
+    string name = 1;
+    Coordinates coordinates = 2;
+}
+
+message Bus {
+    string name = 1;
+    repeated uint32 stop_index = 2;
+    bool is_roundtrip = 3;
+}
+
+message StopPairDistance {
+    uint32 stop1_index = 1;
+    uint32 stop2_index = 2;
+    double distance = 3;
+}
+
+message TransportCatalogue {
+    repeated Stop stops = 1;
+    repeated Bus buses = 2;
+    repeated StopPairDistance distances = 3;
+    RenderSettings render_settings = 4;
+    DirectedWeightedGraph graph = 5;
+    RoutingSettings routing_settings = 6;
+}

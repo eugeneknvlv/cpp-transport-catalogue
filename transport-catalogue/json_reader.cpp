@@ -6,14 +6,15 @@
 #include <optional>
 #include <unordered_set>
 #include <sstream>
+#include <fstream>
 
 using namespace std::literals;
 
 namespace transport_catalogue {
 	namespace json_handler {
 
-		void JsonReader::LoadJSON() {
-			json_document_ = json::Load(input_);
+		void JsonReader::LoadJSON(std::istream& input) {
+			json_document_ = json::Load(input);
 			//ParseJsonDocument();
 		}
 
@@ -45,9 +46,9 @@ namespace transport_catalogue {
 				}
 			}
 
+			catalogue_.SetRenderSettings(GetRenderSettings());
 			catalogue_.SetRoutingSettings(GetRoutingSettings());
 			catalogue_.BuildGraph();
-			router_.InitRouter();
 		}
 
 		void JsonReader::ParseStopWithoutDistances(const json::Node& stop_node) {
@@ -79,10 +80,13 @@ namespace transport_catalogue {
 
 
 		//-------------------- Stat requests processing ------------------------//
-		void JsonReader::ProcessStatRequests() const {
+		void JsonReader::ProcessStatRequests(std::ostream& output) const {
 			json::Array requests_array = json_document_.GetRoot().AsMap().at("stat_requests"s).AsArray();
 			json::Builder builder{};
 			json::ArrayContext arr_ctx = builder.StartArray();
+			const TransportCatalogue::Graph& gr = catalogue_.GetGraphConstRef();
+			graph::Router router(gr);
+
 			for (const json::Node& single_request : requests_array) {
 				std::string request_type = ((single_request.AsMap()).at("type"s)).AsString();
 				if (request_type == "Stop"s) {
@@ -95,12 +99,11 @@ namespace transport_catalogue {
 					arr_ctx.Value(ProcessMapStatRequest(single_request));
 				}
 				else if (request_type == "Route"s) {
-					// TODO
-					arr_ctx.Value(ProcessRouteStatRequest(single_request));
+					arr_ctx.Value(ProcessRouteStatRequest(single_request, router));
 				} 
 			}
 			json::Builder result = arr_ctx.EndArray();
-			json::Print(json::Document(result.Build()), output_);
+			json::Print(json::Document(result.Build()), output);
 		}
 
 		json::Dict JsonReader::ProcessStopStatRequest(const json::Node& stop_node) const {
@@ -159,7 +162,7 @@ namespace transport_catalogue {
 
 		json::Dict JsonReader::ProcessMapStatRequest(const json::Node& map_node) const {
 			int request_id = map_node.AsMap().at("id"s).AsInt();
-			map_renderer::MapRenderer map_renderer(GetRenderSettings(), catalogue_.GetBusnameToBusMap());
+			map_renderer::MapRenderer map_renderer(catalogue_.GetRenderSettings(), catalogue_.GetBusnameToBusMap());
 			map_renderer.SetScalingSettings(catalogue_.GetEveryBusPointCoordinates());
 
 			std::ostringstream map_oss;
@@ -168,14 +171,14 @@ namespace transport_catalogue {
 			return { {"request_id"s, request_id}, {"map"s, map_oss.str()} };
 		}
 
-		json::Dict JsonReader::ProcessRouteStatRequest(const json::Node& route_node) const {
+		json::Dict JsonReader::ProcessRouteStatRequest(const json::Node& route_node, const Router& router) const {
 			int request_id = route_node.AsMap().at("id"s).AsInt();
 			
 			std::string from = route_node.AsMap().at("from"s).AsString();
 			size_t from_id = catalogue_.GetVertexIdByStopName(from);
 			std::string to = route_node.AsMap().at("to"s).AsString();
 			size_t to_id = catalogue_.GetVertexIdByStopName(to);
-			std::optional<TransportCatalogue::Route> route = router_.BuildRoute(from_id, to_id);
+			std::optional<TransportCatalogue::Route> route = router.BuildRoute(from_id, to_id);
 			if (!route.has_value()) {
 				return { {"request_id"s, request_id}, {"error_message"s, "not found"s}};
 			}
@@ -196,7 +199,7 @@ namespace transport_catalogue {
 
 			int bus_waiting_time = catalogue_.GetBusWaitingTime();
 			std::string_view waiting_stop;
-			std::string_view bus_name;
+			std::string bus_name;
 			double travel_time;
 			int span_count;
 
@@ -320,6 +323,10 @@ namespace transport_catalogue {
 			return { bus_wait_time, bus_velocity };
 		}
 
+
+		std::string JsonReader::GetSerializationFilename() const {
+			return json_document_.GetRoot().AsMap().at("serialization_settings").AsMap().at("file").AsString();
+		}
 
 	} // namespace json_handler
 } // namespace transport_catalogue
